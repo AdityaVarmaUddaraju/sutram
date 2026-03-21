@@ -6,16 +6,20 @@ from typing import Callable, Literal
 from .cache import Cache
 from .config import APIConfig, RetryPolicy, RequestConfig
 from .base import BaseProvider
-from .providers.openrouter import OpenRouterProvider
 
 logger = logging.getLogger(__name__)
 
-PROVIDER_REGISTRY: dict[str, dict] = {
-    "openrouter": {
-        "cls": OpenRouterProvider,
-        "base_url": "https://openrouter.ai/api/v1/chat/completions",
-    },
-}
+PROVIDER_REGISTRY: dict[str, dict] = {}
+
+def register_provider(name: str, base_url: str | None = None):
+    """Decorator to register a provider class."""
+    def decorator(cls):
+        if not issubclass(cls, BaseProvider):
+            raise TypeError(f"{cls.__name__} must be a subclass of BaseProvider")
+        PROVIDER_REGISTRY[name] = {"cls": cls, "base_url": base_url}
+        logger.debug(f"Registered provider: {name}")
+        return cls
+    return decorator
 
 def create_provider(
     name: str,
@@ -37,8 +41,12 @@ def create_provider(
     entry = PROVIDER_REGISTRY[name]
     logger.info(f"Creating provider: {name} ({model})")
 
+    url = base_url or entry.get("base_url")
+    if not url:
+        raise ValueError(f"No base_url provided for provider: {name}")
+
     api_config = APIConfig(
-        base_url=base_url or entry["base_url"],
+        base_url=url,
         api_key=api_key,
         retry_policy=RetryPolicy(
             max_retries=max_retries,

@@ -143,19 +143,17 @@ cache = DictCache()
 
 ---
 
-## Provider Registry
-
-### `PROVIDER_REGISTRY`
-
-A dictionary mapping provider names to their class and default base URL:
+### `register_provider`
 
 ```python
-PROVIDER_REGISTRY: dict[str, dict] = {
-    "openrouter": {
-        "cls": OpenRouterProvider,
-        "base_url": "https://openrouter.ai/api/v1/chat/completions",
-    },
-}
+@register_provider(name: str, base_url: str | None = None)
 ```
 
-Add custom providers by inserting into this dict.
+Class decorator that registers a `BaseProvider` subclass in the provider registry.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `name` | `str` | required | Unique provider name |
+| `base_url` | `str \| None` | `None` | Default API endpoint URL |
+
+Add custom providers by using this decorator.

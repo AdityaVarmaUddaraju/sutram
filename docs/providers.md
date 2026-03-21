@@ -49,35 +49,42 @@ provider = create_provider(
 
 ## Creating a Custom Provider
 
-Subclass `BaseProvider` and implement two methods:
-
-- `_build_request_body(messages)` — Build the JSON payload for the API
-- `_parse_response(data)` — Extract the response text from the API response
+Use the `@register_provider` decorator to register your provider:
 
 ```python
-from sutram import BaseProvider, PROVIDER_REGISTRY
+from sutram import BaseProvider, register_provider
 
+@register_provider("myprovider", base_url="https://api.myprovider.com/v1/chat")
 class MyProvider(BaseProvider):
     def _build_request_body(self, messages: list[dict]) -> dict:
         return {"model": self.model, "messages": messages}
 
     def _parse_response(self, data: dict) -> str:
         return data["choices"][0]["message"]["content"]
-
-# Register it
-PROVIDER_REGISTRY["myprovider"] = {
-    "cls": MyProvider,
-    "base_url": "https://api.myprovider.com/v1/chat",
-}
 ```
 
-Now you can use it like any built-in provider:
+Now use it like any built-in provider:
 
 ```python
 provider = create_provider(
     name="myprovider",
     model="my-model",
     api_key="my-key",
+)
+```
+
+The `base_url` in the decorator is optional — you can pass it at creation time instead:
+
+```python
+@register_provider("myprovider")
+class MyProvider(BaseProvider):
+    ...
+
+provider = create_provider(
+    name="myprovider",
+    model="my-model",
+    api_key="my-key",
+    base_url="https://api.myprovider.com/v1/chat",
 )
 ```
 

@@ -5,7 +5,7 @@ from .session import Session
 from .config import RetryPolicy, APIConfig, RequestConfig
 from .base import BaseProvider
 from .providers.openrouter import OpenRouterProvider
-from .registry import PROVIDER_REGISTRY, create_provider
+from .registry import register_provider, create_provider
 
 __all__ = [
     "Cache", "DictCache",
@@ -13,5 +13,5 @@ __all__ = [
     "RetryPolicy", "APIConfig", "RequestConfig",
     "BaseProvider",
     "OpenRouterProvider",
-    "PROVIDER_REGISTRY", "create_provider",
+    "register_provider", "create_provider",
 ]
