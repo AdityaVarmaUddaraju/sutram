@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "sutram"
 version = "0.1.0"
-description = "Add your description here"
+description = "A lightweight Python library for calling LLMs through a unified interface with built-in caching, retry policies, and session management"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
