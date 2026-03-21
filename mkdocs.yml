@@ -1,0 +1,18 @@
+site_name: Sutram
+
+theme:
+    name: material
+
+nav:
+    - Home: index.md
+    - Quick Start: quickstart.md
+    - Providers: providers.md
+    - Caching: caching.md
+    - Sessions: sessions.md
+    - Retry Policies: retry.md
+    - API Reference: api-reference.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences

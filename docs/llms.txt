@@ -1,0 +1,25 @@
+# Sutram
+
+> Sutram is a lightweight Python library that provides a unified interface for calling LLMs, with built-in caching, retry policies, and multi-turn session management.
+
+Important notes:
+
+- Sutram uses an OpenAI-compatible chat completions API format (messages with roles)
+- New providers are added by subclassing `BaseProvider` and implementing `_build_request_body()` and `_parse_response()`
+- Both sync and async methods are supported on all providers
+
+## Docs
+
+- [Quick Start](https://adityavarmauddaraju.github.io/sutram/quickstart/): Get up and running in 5 minutes with installation, API key setup, and basic usage
+- [Providers](https://adityavarmauddaraju.github.io/sutram/providers/): Provider configuration, custom providers, and sync/async usage
+- [Caching](https://adityavarmauddaraju.github.io/sutram/caching/): Cache configuration, custom cache backends, and the Cache protocol
+- [Sessions](https://adityavarmauddaraju.github.io/sutram/sessions/): Multi-turn conversation management and tool call support
+- [Retry Policies](https://adityavarmauddaraju.github.io/sutram/retry/): Exponential/fixed backoff, retryable status codes, and timeouts
+
+## API Reference
+
+- [API Reference](https://adityavarmauddaraju.github.io/sutram/api-reference/): Full API documentation for all classes and functions
+
+## Optional
+
+- [GitHub Repository](https://github.com/AdityaVarmaUddaraju/sutram): Source code and README
