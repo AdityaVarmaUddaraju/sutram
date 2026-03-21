@@ -1,0 +1,162 @@
+"""Base provider with caching, retry, and sync/async support."""
+
+import asyncio
+import logging
+import time
+
+import httpx
+
+from .cache import Cache, make_cache_key
+from .config import APIConfig, RequestConfig
+
+logger = logging.getLogger(__name__)
+
+class BaseProvider:
+    """Subclasses implement _build_request_body() and _parse_response()."""
+
+    def __init__(self, model: str, request_config: RequestConfig, cache: Cache | None = None):
+        self.model = model
+        self.request_config = request_config
+        self.cache = cache
+
+    @property
+    def api_config(self) -> APIConfig:
+        return self.request_config.api_config
+
+    def _build_request_body(self, messages: list[dict]) -> dict:
+        raise NotImplementedError
+
+    def _parse_response(self, data: dict) -> str:
+        raise NotImplementedError
+
+    def _build_messages(self, prompt: str, system_prompt: str | None = None) -> list[dict]:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        return messages
+
+    # --- Cache helpers ---
+    def _cache_get(self, messages: list[dict]) -> str | None:
+        if self.cache is None: return None
+        return self.cache.get(make_cache_key(self.model, messages))
+
+    def _cache_set(self, messages: list[dict], result: str) -> None:
+        if self.cache is None: return
+        self.cache.set(make_cache_key(self.model, messages), result)
+
+    # --- Sync request with retry ---
+    def _request_with_retry(self, messages: list[dict]) -> str:
+        policy = self.api_config.retry_policy
+        api_key = self.api_config.get_api_key()
+        body = self._build_request_body(messages)
+        last_error = None
+        client = self.request_config.sync_client
+        should_close = client is None
+        if should_close:
+            client = httpx.Client()
+
+        try:
+            for attempt in range(policy.max_retries + 1):
+                try:
+                    logger.info(f"Request to {self.model} (attempt {attempt+1}/{policy.max_retries+1})")
+                    response = client.post(
+                        self.api_config.base_url,
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json=body,
+                        timeout=policy.timeout,
+                    )
+                    if response.status_code in policy.retry_on_status and attempt < policy.max_retries:
+                        wait = policy.get_wait_time(attempt)
+                        logger.warning(f"Status {response.status_code}, retrying in {wait:.1f}s")
+                        time.sleep(wait)
+                        continue
+                    response.raise_for_status()
+                    logger.info(f"Request successful ({response.status_code})")
+                    return self._parse_response(response.json())
+                except httpx.TimeoutException as e:
+                    last_error = e
+                    if attempt < policy.max_retries:
+                        wait = policy.get_wait_time(attempt)
+                        logger.warning(f"Timeout, retrying in {wait:.1f}s")
+                        time.sleep(wait)
+        finally:
+            if should_close:
+                client.close()
+
+        logger.error(f"All {policy.max_retries+1} attempts failed")
+        raise last_error or RuntimeError("Max retries exceeded")
+
+    # --- Async request with retry ---
+    async def _arequest_with_retry(self, messages: list[dict]) -> str:
+        policy = self.api_config.retry_policy
+        api_key = await self.api_config.aget_api_key()
+        body = self._build_request_body(messages)
+        last_error = None
+        client = self.request_config.async_client
+        should_close = client is None
+        if should_close:
+            client = httpx.AsyncClient()
+
+        try:
+            for attempt in range(policy.max_retries + 1):
+                try:
+                    logger.info(f"Async request to {self.model} (attempt {attempt+1}/{policy.max_retries+1})")
+                    response = await client.post(
+                        self.api_config.base_url,
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json=body,
+                        timeout=policy.timeout,
+                    )
+                    if response.status_code in policy.retry_on_status and attempt < policy.max_retries:
+                        wait = policy.get_wait_time(attempt)
+                        logger.warning(f"Status {response.status_code}, retrying in {wait:.1f}s")
+                        await asyncio.sleep(wait)
+                        continue
+                    response.raise_for_status()
+                    logger.info(f"Async request successful ({response.status_code})")
+                    return self._parse_response(response.json())
+                except httpx.TimeoutException as e:
+                    last_error = e
+                    if attempt < policy.max_retries:
+                        wait = policy.get_wait_time(attempt)
+                        logger.warning(f"Timeout, retrying in {wait:.1f}s")
+                        await asyncio.sleep(wait)
+        finally:
+            if should_close:
+                await client.aclose()
+
+        logger.error(f"All {policy.max_retries+1} attempts failed")
+        raise last_error or RuntimeError("Max retries exceeded")
+
+    # --- Sync API ---
+    def call_llm(self, prompt: str, system_prompt: str | None = None) -> str:
+        messages = self._build_messages(prompt, system_prompt)
+        cached = self._cache_get(messages)
+        if cached is not None: return cached
+        result = self._request_with_retry(messages)
+        self._cache_set(messages, result)
+        return result
+
+    def chat(self, messages: list[dict]) -> str:
+        cached = self._cache_get(messages)
+        if cached is not None: return cached
+        result = self._request_with_retry(messages)
+        self._cache_set(messages, result)
+        return result
+
+    # --- Async API ---
+    async def acall_llm(self, prompt: str, system_prompt: str | None = None) -> str:
+        messages = self._build_messages(prompt, system_prompt)
+        cached = self._cache_get(messages)
+        if cached is not None: return cached
+        result = await self._arequest_with_retry(messages)
+        self._cache_set(messages, result)
+        return result
+
+    async def achat(self, messages: list[dict]) -> str:
+        cached = self._cache_get(messages)
+        if cached is not None: return cached
+        result = await self._arequest_with_retry(messages)
+        self._cache_set(messages, result)
+        return result
