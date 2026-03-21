@@ -13,6 +13,7 @@ nav:
     - API Reference: api-reference.md
 
 markdown_extensions:
+  - admonition
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.superfences

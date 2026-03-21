@@ -10,16 +10,16 @@ Important notes:
 
 ## Docs
 
-- [Quick Start](https://AdityaVarmaUddaraju.github.io/sutram/quickstart/): Get up and running in 5 minutes with installation, API key setup, and basic usage
-- [Providers](https://AdityaVarmaUddaraju.github.io/sutram/providers/): Provider configuration, custom providers, and sync/async usage
-- [Caching](https://AdityaVarmaUddaraju.github.io/sutram/caching/): Cache configuration, custom cache backends, and the Cache protocol
-- [Sessions](https://AdityaVarmaUddaraju.github.io/sutram/sessions/): Multi-turn conversation management and tool call support
-- [Retry Policies](https://AdityaVarmaUddaraju.github.io/sutram/retry/): Exponential/fixed backoff, retryable status codes, and timeouts
+- [Quick Start](https://adityavarmauddaraju.github.io/sutram/quickstart/): Get up and running in 5 minutes with installation, API key setup, and basic usage
+- [Providers](https://adityavarmauddaraju.github.io/sutram/providers/): Provider configuration, custom providers, and sync/async usage
+- [Caching](https://adityavarmauddaraju.github.io/sutram/caching/): Cache configuration, custom cache backends, and the Cache protocol
+- [Sessions](https://adityavarmauddaraju.github.io/sutram/sessions/): Multi-turn conversation management and tool call support
+- [Retry Policies](https://adityavarmauddaraju.github.io/sutram/retry/): Exponential/fixed backoff, retryable status codes, and timeouts
 
 ## API Reference
 
-- [API Reference](https://AdityaVarmaUddaraju.github.io/sutram/api-reference/): Full API documentation for all classes and functions
+- [API Reference](https://adityavarmauddaraju.github.io/sutram/api-reference/): Full API documentation for all classes and functions
 
 ## Optional
 
-- [GitHub Repository](https://github.com/AdityaVarmaUddaraju/sutram): Source code and README
+- [GitHub Repository](https://github.com/adityavarmauddaraju/sutram): Source code and README
