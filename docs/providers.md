@@ -48,9 +48,29 @@ provider = create_provider(
 )
 ```
 
+## OpenAI-Compatible Providers
+
+Many LLM providers (OpenAI, Groq, Together, Mistral, etc.) use the same request/response format as OpenAI's chat completions API. Sutram provides `OpenAICompatProvider` as a base class for these providers — it handles building the request body and parsing the response (including tool calls, reasoning, and usage) out of the box.
+
+For example, adding OpenAI as a provider is just:
+
+```python
+from sutram import OpenAICompatProvider, register_provider
+
+@register_provider("openai", base_url="https://api.openai.com/v1/chat/completions")
+class OpenAIProvider(OpenAICompatProvider):
+    pass
+```
+
+That's it — no need to implement `_build_request_body` or `_parse_response`.
+
+The built-in `OpenRouterProvider` itself extends `OpenAICompatProvider`, so it automatically benefits from full response parsing including tool calls and reasoning content.
+
 ## Creating a Custom Provider
 
-Use the `@register_provider` decorator to register your provider:
+If your provider uses the OpenAI format, extend `OpenAICompatProvider` as shown above.
+
+If your provider uses a **different** format, extend `BaseProvider` directly and implement `_build_request_body` and `_parse_response`:
 
 ```python
 from sutram import BaseProvider, LLMResponse, register_provider

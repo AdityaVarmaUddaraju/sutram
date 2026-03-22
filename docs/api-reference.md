@@ -108,6 +108,35 @@ def _build_request_body(self, messages: list[dict]) -> dict
 def _parse_response(self, data: dict) -> LLMResponse
 ```
 
+If the provider uses the OpenAI chat completions format, extend `OpenAICompatProvider` instead (see below).
+
+---
+
+## OpenAICompatProvider
+
+```python
+class OpenAICompatProvider(BaseProvider)
+```
+
+Base class for providers that use the OpenAI chat completions request/response format. Implements `_build_request_body` and `_parse_response` so subclasses typically need no additional code.
+
+**Handles automatically:**
+
+- Standard `{"model": ..., "messages": ...}` request body
+- Response parsing for `content`, `reasoning`, `tool_calls`, `finish_reason`, and `usage`
+
+**Usage:**
+
+```python
+from sutram import OpenAICompatProvider, register_provider
+
+@register_provider("openai", base_url="https://api.openai.com/v1/chat/completions")
+class OpenAIProvider(OpenAICompatProvider):
+    pass
+```
+
+Subclasses can override `_build_request_body` or `_parse_response` if the provider has minor differences from the standard format.
+
 ---
 
 ## Session

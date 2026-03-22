@@ -67,7 +67,17 @@ provider = create_provider(
 
 ## Creating a Custom Provider
 
-Use the `@register_provider` decorator to register your provider:
+For providers that use the **OpenAI chat completions format** (OpenAI, Groq, Together, Mistral, etc.), extend `OpenAICompatProvider` — no methods to implement:
+
+```python
+from sutram import OpenAICompatProvider, register_provider
+
+@register_provider("openai", base_url="https://api.openai.com/v1/chat/completions")
+class OpenAIProvider(OpenAICompatProvider):
+    pass
+```
+
+For providers with a **different format**, extend `BaseProvider` and implement `_build_request_body` and `_parse_response`:
 
 ```python
 from sutram import BaseProvider, LLMResponse, register_provider
