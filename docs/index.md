@@ -14,7 +14,7 @@ Sutram is a lightweight Python library that provides a unified interface for cal
 - **Extensible** — Add custom providers in minutes
 
 !!! info "LLM-Friendly Docs"
-    This project provides an [llms.txt](/sutram/llms.txt) file following the [llmstxt.org](https://llmstxt.org/) standard, making it easy for LLMs and AI agents to understand and use Sutram.
+    This project provides an [llms.txt](llms.txt) file following the [llmstxt.org](https://llmstxt.org/) standard, making it easy for LLMs and AI agents to understand and use Sutram.
 
 ## Installation
 
