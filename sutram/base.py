@@ -8,6 +8,7 @@ import httpx
 
 from .cache import Cache, make_cache_key
 from .config import APIConfig, RequestConfig
+from .response import LLMResponse, Usage, ToolCall
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class BaseProvider:
     def _build_request_body(self, messages: list[dict]) -> dict:
         raise NotImplementedError
 
-    def _parse_response(self, data: dict) -> str:
+    def _parse_response(self, data: dict) -> LLMResponse:
         raise NotImplementedError
 
     def _build_messages(self, prompt: str, system_prompt: str | None = None) -> list[dict]:
@@ -37,13 +38,15 @@ class BaseProvider:
         return messages
 
     # --- Cache helpers ---
-    def _cache_get(self, messages: list[dict]) -> str | None:
+    def _cache_get(self, messages: list[dict]) -> LLMResponse | None:
         if self.cache is None: return None
-        return self.cache.get(make_cache_key(self.model, messages))
+        data = self.cache.get(make_cache_key(self.model, messages))
+        if data is None: return None
+        return LLMResponse.model_validate_json(data)
 
-    def _cache_set(self, messages: list[dict], result: str) -> None:
+    def _cache_set(self, messages: list[dict], result: LLMResponse) -> None:
         if self.cache is None: return
-        self.cache.set(make_cache_key(self.model, messages), result)
+        self.cache.set(make_cache_key(self.model, messages), result.model_dump_json())
 
     # --- Sync request with retry ---
     def _request_with_retry(self, messages: list[dict]) -> str:
@@ -130,7 +133,7 @@ class BaseProvider:
         raise last_error or RuntimeError("Max retries exceeded")
 
     # --- Sync API ---
-    def call_llm(self, prompt: str, system_prompt: str | None = None) -> str:
+    def call_llm(self, prompt: str, system_prompt: str | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
         cached = self._cache_get(messages)
         if cached is not None: return cached
@@ -138,7 +141,7 @@ class BaseProvider:
         self._cache_set(messages, result)
         return result
 
-    def chat(self, messages: list[dict]) -> str:
+    def chat(self, messages: list[dict]) -> LLMResponse:
         cached = self._cache_get(messages)
         if cached is not None: return cached
         result = self._request_with_retry(messages)
@@ -146,7 +149,7 @@ class BaseProvider:
         return result
 
     # --- Async API ---
-    async def acall_llm(self, prompt: str, system_prompt: str | None = None) -> str:
+    async def acall_llm(self, prompt: str, system_prompt: str | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
         cached = self._cache_get(messages)
         if cached is not None: return cached
@@ -154,7 +157,7 @@ class BaseProvider:
         self._cache_set(messages, result)
         return result
 
-    async def achat(self, messages: list[dict]) -> str:
+    async def achat(self, messages: list[dict]) -> LLMResponse:
         cached = self._cache_get(messages)
         if cached is not None: return cached
         result = await self._arequest_with_retry(messages)
