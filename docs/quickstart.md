@@ -113,6 +113,28 @@ async def main():
 asyncio.run(main())
 ```
 
+## SSL Verification
+
+By default, Sutram verifies SSL certificates using your system's trusted CA bundle. You can customize this behavior with the `verify` parameter:
+
+```python
+# Disable SSL verification (not recommended for production)
+provider = create_provider(
+    name="openrouter",
+    model="openai/gpt-4",
+    api_key=os.environ["OPEN_ROUTER_API_KEY"],
+    verify=False,
+)
+
+# Use a custom CA bundle (e.g. for corporate proxies)
+provider = create_provider(
+    name="openrouter",
+    model="openai/gpt-4",
+    api_key=os.environ["OPEN_ROUTER_API_KEY"],
+    verify="/path/to/ca-bundle.pem",
+)
+```
+
 ## What's Next?
 
 - [Providers](providers.md) — Configure providers and build your own

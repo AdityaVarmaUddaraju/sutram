@@ -57,7 +57,7 @@ class BaseProvider:
         client = self.request_config.sync_client
         should_close = client is None
         if should_close:
-            client = httpx.Client()
+            client = httpx.Client(verify=self.request_config.verify)
 
         try:
             for attempt in range(policy.max_retries + 1):
@@ -99,7 +99,7 @@ class BaseProvider:
         client = self.request_config.async_client
         should_close = client is None
         if should_close:
-            client = httpx.AsyncClient()
+            client = httpx.AsyncClient(verify=self.request_config.verify)
 
         try:
             for attempt in range(policy.max_retries + 1):

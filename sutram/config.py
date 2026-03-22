@@ -45,5 +45,6 @@ class RequestConfig(BaseModel):
     api_config: APIConfig
     sync_client: httpx.Client | None = None
     async_client: httpx.AsyncClient | None = None
+    verify: bool | str = True
 
     model_config = {"arbitrary_types_allowed": True}

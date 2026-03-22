@@ -34,6 +34,7 @@ def create_provider(
     cache: Cache | None = None,
     sync_client=None,
     async_client=None,
+    verify: bool | str = True,
 ) -> BaseProvider:
     if name not in PROVIDER_REGISTRY:
         raise ValueError(f"Unknown provider: {name}. Available: {list(PROVIDER_REGISTRY.keys())}")
@@ -61,6 +62,7 @@ def create_provider(
         api_config=api_config,
         sync_client=sync_client,
         async_client=async_client,
+        verify=verify,
     )
 
     return entry["cls"](model=model, request_config=request_config, cache=cache)

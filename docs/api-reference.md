@@ -18,6 +18,7 @@ create_provider(
     cache: Cache | None = None,
     sync_client: httpx.Client | None = None,
     async_client: httpx.AsyncClient | None = None,
+    verify: bool | str = True,
 ) -> BaseProvider
 ```
 
@@ -205,6 +206,7 @@ cache = DictCache()
 | `api_config` | `APIConfig` | API configuration |
 | `sync_client` | `httpx.Client \| None` | Optional shared sync HTTP client |
 | `async_client` | `httpx.AsyncClient \| None` | Optional shared async HTTP client |
+| `verify` | `bool \| str` | SSL verification: `True` (default), `False` to disable, or path to a CA bundle `.pem` file |
 
 ---
 
