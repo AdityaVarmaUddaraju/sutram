@@ -13,6 +13,8 @@ A unified Python interface for LLM providers. One thread to connect your code to
 - **Retry Policies** — Configurable exponential/fixed backoff with status-code filtering
 - **Multi-turn Sessions** — First-class support for conversation history management
 - **Sync & Async** — Full support for both synchronous and asynchronous workflows
+- **Tool Calling** — Define tools with `@tool` decorator and `make_tool_config()`
+- **Structured Output** — Get validated Pydantic model responses via `ResponseSchema`
 - **Extensible** — Add new providers by subclassing `BaseProvider`
 
 ## Installation

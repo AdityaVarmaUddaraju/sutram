@@ -1,16 +1,21 @@
 """Base provider for OpenAI-compatible APIs."""
 
 from ..base import BaseProvider
+from ..config import ToolConfig
 from ..response import LLMResponse, Usage, ToolCall
 
 
 class OpenAICompatProvider(BaseProvider):
     """Base class for providers using the OpenAI chat completions format."""
 
-    def _build_request_body(self, messages: list[dict], response_format: dict | None = None) -> dict:
+    def _build_request_body(self, messages: list[dict], response_format: dict | None = None, tool_config: ToolConfig | None = None) -> dict:
         body = {"model": self.model, "messages": messages}
         if response_format:
             body["response_format"] = response_format
+        if tool_config:
+            body["tools"] = tool_config.tools
+            if tool_config.tool_choice is not None:
+                body["tool_choice"] = tool_config.tool_choice
         return body
 
     def _parse_response(self, data: dict) -> LLMResponse:

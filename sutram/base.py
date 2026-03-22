@@ -7,7 +7,7 @@ import time
 import httpx
 
 from .cache import Cache, make_cache_key
-from .config import APIConfig, RequestConfig, ResponseSchema
+from .config import APIConfig, RequestConfig, ResponseSchema, ToolConfig
 from .response import LLMResponse, Usage, ToolCall
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class BaseProvider:
     def api_config(self) -> APIConfig:
         return self.request_config.api_config
 
-    def _build_request_body(self, messages: list[dict], response_format: dict | None = None) -> dict:
+    def _build_request_body(self, messages: list[dict], response_format: dict | None = None, tool_config: ToolConfig | None = None) -> dict:
         raise NotImplementedError
 
     def _build_response_format(self, response_model) -> dict:
@@ -58,10 +58,10 @@ class BaseProvider:
         self.cache.set(make_cache_key(self.model, messages), result.model_dump_json())
 
     # --- Sync request with retry ---
-    def _request_with_retry(self, messages: list[dict], response_format: dict | None = None) -> LLMResponse:
+    def _request_with_retry(self, messages: list[dict], response_format: dict | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         policy = self.api_config.retry_policy
         api_key = self.api_config.get_api_key()
-        body = self._build_request_body(messages, response_format=response_format)
+        body = self._build_request_body(messages, response_format=response_format, tool_config=tool_config)
         last_error = None
         client = self.request_config.sync_client
         should_close = client is None
@@ -100,10 +100,10 @@ class BaseProvider:
         raise last_error or RuntimeError("Max retries exceeded")
 
     # --- Async request with retry ---
-    async def _arequest_with_retry(self, messages: list[dict], response_format: dict | None = None) -> LLMResponse:
+    async def _arequest_with_retry(self, messages: list[dict], response_format: dict | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         policy = self.api_config.retry_policy
         api_key = await self.api_config.aget_api_key()
-        body = self._build_request_body(messages, response_format=response_format)
+        body = self._build_request_body(messages, response_format=response_format, tool_config=tool_config)
         last_error = None
         client = self.request_config.async_client
         should_close = client is None
@@ -177,44 +177,44 @@ class BaseProvider:
         return response
 
     # --- Sync API ---
-    def call_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse:
+    def call_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
         response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = self._request_with_retry(messages, response_format=response_format)
+        result = self._request_with_retry(messages, response_format=response_format, tool_config=tool_config)
         if response_schema:
             result = self._parse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
 
-    def chat(self, messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse:
+    def chat(self, messages: list[dict], response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = self._request_with_retry(messages, response_format=response_format)
+        result = self._request_with_retry(messages, response_format=response_format, tool_config=tool_config)
         if response_schema:
             result = self._parse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
 
     # --- Async API ---
-    async def acall_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse:
+    async def acall_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
         response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = await self._arequest_with_retry(messages, response_format=response_format)
+        result = await self._arequest_with_retry(messages, response_format=response_format, tool_config=tool_config)
         if response_schema:
             result = await self._aparse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
 
-    async def achat(self, messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse:
+    async def achat(self, messages: list[dict], response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = await self._arequest_with_retry(messages, response_format=response_format)
+        result = await self._arequest_with_retry(messages, response_format=response_format, tool_config=tool_config)
         if response_schema:
             result = await self._aparse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)

@@ -113,6 +113,46 @@ async def main():
 asyncio.run(main())
 ```
 
+## Tool Calling
+
+Define tools using the `@tool` decorator and let the LLM call them:
+
+```python
+from sutram import create_provider, tool, make_tool_config
+
+@tool
+def get_weather(location: str, units: str = "celsius"):
+    """Get the current weather for a location"""
+    return f"Sunny, 25° in {location}"
+
+@tool
+def search_restaurants(city: str, cuisine: str = "any"):
+    """Search for restaurants in a city by cuisine type"""
+    return f"Found restaurants in {city}"
+
+provider = create_provider(
+    name="openrouter",
+    model="openai/gpt-4",
+    api_key=os.environ["OPEN_ROUTER_API_KEY"],
+)
+
+tc = make_tool_config(get_weather, search_restaurants)
+result = provider.call_llm("What's the weather in Tokyo?", tool_config=tc)
+print(result.tool_calls)  # LLM requests to call get_weather
+```
+
+You can control tool selection with `tool_choice`:
+
+```python
+# Force the model to call a tool
+tc = make_tool_config(get_weather, tool_choice="required")
+
+# Force a specific tool
+tc = make_tool_config(get_weather, search_restaurants, tool_choice={
+    "type": "function", "function": {"name": "get_weather"}
+})
+```
+
 ## Structured Output
 
 Get validated, typed responses using Pydantic models:

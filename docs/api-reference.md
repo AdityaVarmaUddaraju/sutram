@@ -72,15 +72,15 @@ The base class for all providers. Handles caching, retries, and both sync/async 
 #### `call_llm`
 
 ```python
-call_llm(prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse
+call_llm(prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse
 ```
 
-Single-turn synchronous call. Optionally include a system prompt and a `ResponseSchema` for structured output.
+Single-turn synchronous call. Optionally include a system prompt, a `ResponseSchema` for structured output, and a `ToolConfig` for tool calling.
 
 #### `acall_llm`
 
 ```python
-async acall_llm(prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse
+async acall_llm(prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse
 ```
 
 Async version of `call_llm`.
@@ -88,7 +88,7 @@ Async version of `call_llm`.
 #### `chat`
 
 ```python
-chat(messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse
+chat(messages: list[dict], response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse
 ```
 
 Multi-turn synchronous call. Pass a full message list (e.g. from `Session.get_messages()`).
@@ -96,7 +96,7 @@ Multi-turn synchronous call. Pass a full message list (e.g. from `Session.get_me
 #### `achat`
 
 ```python
-async achat(messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse
+async achat(messages: list[dict], response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse
 ```
 
 Async version of `chat`.
@@ -200,6 +200,15 @@ cache = DictCache()
 | `api_key` | `str` \| `Callable` | API key or callable that returns one |
 | `retry_policy` | `RetryPolicy` | Retry configuration |
 
+### `ToolConfig`
+
+Configuration for tool calling.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `tools` | `list[dict]` | required | List of OpenAI-compatible tool definitions |
+| `tool_choice` | `str \| dict \| None` | `None` | Tool choice strategy: `None`/omitted (auto), `"required"`, `"none"`, or a dict to force a specific tool |
+
 ### `ResponseSchema`
 
 Configuration for structured output with automatic validation and retry.
@@ -241,3 +250,48 @@ Class decorator that registers a `BaseProvider` subclass in the provider registr
 | `base_url` | `str \| None` | `None` | Default API endpoint URL |
 
 Add custom providers by using this decorator.
+
+---
+
+## Tool Utilities
+
+### `@tool`
+
+```python
+@tool
+def my_function(param: str, optional_param: int = 5):
+    """Description of the function"""
+    ...
+```
+
+Decorator that attaches an OpenAI-compatible tool schema to a function as `my_function.schema`. The function remains callable as normal.
+
+- Parameters **must** have type annotations
+- The docstring becomes the tool description
+- Parameters with defaults are marked as optional in the schema
+- Supported types: `str`, `int`, `float`, `bool`, `list`
+
+### `make_tool_config`
+
+```python
+make_tool_config(*funcs, tool_choice: str | dict | None = None) -> ToolConfig
+```
+
+Creates a `ToolConfig` from one or more `@tool`-decorated functions.
+
+```python
+from sutram import tool, make_tool_config
+
+@tool
+def get_weather(location: str):
+    """Get the current weather for a location"""
+    ...
+
+@tool
+def search_restaurants(city: str, cuisine: str = "any"):
+    """Search for restaurants in a city"""
+    ...
+
+tc = make_tool_config(get_weather, search_restaurants)
+result = provider.call_llm("...", tool_config=tc)
+```

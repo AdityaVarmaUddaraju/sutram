@@ -11,6 +11,8 @@ Sutram is a lightweight Python library that provides a unified interface for cal
 - **Automatic retries** — Handle transient failures with configurable backoff strategies
 - **Multi-turn sessions** — Manage conversation history effortlessly
 - **Sync & Async** — Full support for both workflows
+- **Tool Calling** — Define tools with `@tool` decorator and let LLMs call your functions
+- **Structured Output** — Get validated Pydantic model responses with automatic retry
 - **Extensible** — Add custom providers in minutes
 
 !!! info "LLM-Friendly Docs"

@@ -77,7 +77,7 @@ from sutram import BaseProvider, LLMResponse, register_provider
 
 @register_provider("myprovider", base_url="https://api.myprovider.com/v1/chat")
 class MyProvider(BaseProvider):
-    def _build_request_body(self, messages: list[dict]) -> dict:
+    def _build_request_body(self, messages: list[dict], response_format: dict | None = None, tool_config=None) -> dict:
         return {"model": self.model, "messages": messages}
 
     def _parse_response(self, data: dict) -> LLMResponse:

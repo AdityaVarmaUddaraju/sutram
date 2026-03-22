@@ -5,9 +5,11 @@
 Important notes:
 
 - Sutram uses an OpenAI-compatible chat completions API format (messages with roles)
-- All provider methods return an `LLMResponse` object with `content`, `reasoning`, `tool_calls`, `usage`, `finish_reason`, and `raw` fields
+- All provider methods return an `LLMResponse` object with `content`, `reasoning`, `tool_calls`, `usage`, `finish_reason`, `raw`, and `parsed` fields
 - New providers are added by subclassing `BaseProvider` and implementing `_build_request_body()` and `_parse_response()` (returning `LLMResponse`) and using the `@register_provider` decorator
 - Both sync and async methods are supported on all providers
+- Tool calling is supported via `@tool` decorator and `make_tool_config()` for converting Python functions to tool schemas
+- Structured output is supported via `ResponseSchema` with Pydantic model validation and automatic retry
 
 ## Docs
 

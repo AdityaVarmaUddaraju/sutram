@@ -41,6 +41,11 @@ class APIConfig(BaseModel):
             return self.api_key()
         return self.api_key
 
+class ToolConfig(BaseModel):
+    tools: list[dict]
+    tool_choice: str | dict | None = None
+
+
 class ResponseSchema(BaseModel):
     response_model: type[BaseModel]
     max_parse_retries: int = 3
