@@ -45,7 +45,7 @@ provider = create_provider(
 )
 
 response = provider.call_llm("Hello, world!")
-print(response)
+print(response.content)
 ```
 
 ## Adding Caching
@@ -66,7 +66,7 @@ provider = create_provider(
 # First call hits the API
 response = provider.call_llm("Hello!")
 
-# Second identical call returns from cache
+# Second identical call returns from cache (same LLMResponse)
 response = provider.call_llm("Hello!")
 ```
 
@@ -85,13 +85,13 @@ session = Session(system_prompt="You are a helpful assistant.")
 session.add_user_message("What is Python?")
 
 response = provider.chat(session.get_messages())
-print(response)
+print(response.content)
 
-session.add_assistant_message(response)
+session.add_assistant_message(response.content)
 session.add_user_message("What are its main features?")
 
 response = provider.chat(session.get_messages())
-print(response)
+print(response.content)
 ```
 
 ## Async Support
@@ -108,7 +108,7 @@ provider = create_provider(
 
 async def main():
     response = await provider.acall_llm("Hello from async!")
-    print(response)
+    print(response.content)
 
 asyncio.run(main())
 ```

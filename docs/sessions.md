@@ -34,14 +34,14 @@ session = Session(system_prompt="You are a helpful assistant.")
 # Turn 1
 session.add_user_message("What is Python?")
 response = provider.chat(session.get_messages())
-print(response)
-session.add_assistant_message(response)
+print(response.content)
+session.add_assistant_message(response.content)
 
 # Turn 2
 session.add_user_message("What are its main features?")
 response = provider.chat(session.get_messages())
-print(response)
-session.add_assistant_message(response)
+print(response.content)
+session.add_assistant_message(response.content)
 ```
 
 ## Message Types
@@ -80,6 +80,7 @@ session.add_tool_message(
 
 # Model responds with the final answer
 response = provider.chat(session.get_messages())
+print(response.content)
 ```
 
 ## Inspecting a Session

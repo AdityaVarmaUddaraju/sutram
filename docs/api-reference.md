@@ -25,6 +25,42 @@ Creates and returns a configured provider instance.
 
 ---
 
+## Response Models
+
+### `LLMResponse`
+
+The unified response object returned by all provider methods.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `content` | `str \| None` | `None` | Text content of the response |
+| `reasoning` | `str \| None` | `None` | Model reasoning/thinking content, if present |
+| `tool_calls` | `list[ToolCall]` | `[]` | Tool/function calls requested by the model |
+| `finish_reason` | `str \| None` | `None` | Why the model stopped (`"stop"`, `"length"`, `"tool_calls"`, etc.) |
+| `usage` | `Usage` | `Usage()` | Token usage statistics |
+| `raw` | `dict` | `{}` | Full raw response from the provider API |
+
+`LLMResponse` provides a rich HTML representation in notebooks with collapsible sections for reasoning, tool calls, and raw response data.
+
+### `Usage`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `prompt_tokens` | `int` | `0` | Tokens in the prompt |
+| `completion_tokens` | `int` | `0` | Tokens in the completion |
+| `total_tokens` | `int` | `0` | Total tokens used |
+
+### `ToolCall`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `id` | `str` | required | Unique tool call ID |
+| `type` | `str` | `"function"` | Tool call type |
+| `function_name` | `str` | required | Name of the function to call |
+| `function_arguments` | `str` | required | JSON string of function arguments |
+
+---
+
 ## BaseProvider
 
 The base class for all providers. Handles caching, retries, and both sync/async requests.
@@ -34,7 +70,7 @@ The base class for all providers. Handles caching, retries, and both sync/async 
 #### `call_llm`
 
 ```python
-call_llm(prompt: str, system_prompt: str | None = None) -> str
+call_llm(prompt: str, system_prompt: str | None = None) -> LLMResponse
 ```
 
 Single-turn synchronous call. Optionally include a system prompt.
@@ -42,7 +78,7 @@ Single-turn synchronous call. Optionally include a system prompt.
 #### `acall_llm`
 
 ```python
-async acall_llm(prompt: str, system_prompt: str | None = None) -> str
+async acall_llm(prompt: str, system_prompt: str | None = None) -> LLMResponse
 ```
 
 Async version of `call_llm`.
@@ -50,7 +86,7 @@ Async version of `call_llm`.
 #### `chat`
 
 ```python
-chat(messages: list[dict]) -> str
+chat(messages: list[dict]) -> LLMResponse
 ```
 
 Multi-turn synchronous call. Pass a full message list (e.g. from `Session.get_messages()`).
@@ -58,7 +94,7 @@ Multi-turn synchronous call. Pass a full message list (e.g. from `Session.get_me
 #### `achat`
 
 ```python
-async achat(messages: list[dict]) -> str
+async achat(messages: list[dict]) -> LLMResponse
 ```
 
 Async version of `chat`.
@@ -69,7 +105,7 @@ Implement these two methods to create a custom provider:
 
 ```python
 def _build_request_body(self, messages: list[dict]) -> dict
-def _parse_response(self, data: dict) -> str
+def _parse_response(self, data: dict) -> LLMResponse
 ```
 
 ---

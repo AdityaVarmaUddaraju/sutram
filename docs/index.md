@@ -34,7 +34,7 @@ provider = create_provider(
 )
 
 response = provider.call_llm("What is the meaning of sūtram?")
-print(response)
+print(response.content)
 ```
 
 ## Next Steps

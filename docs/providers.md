@@ -15,6 +15,7 @@ provider = create_provider(
 )
 
 response = provider.call_llm("Hello!")
+print(response.content)
 ```
 
 Any model available on [OpenRouter](https://openrouter.ai/models) can be used by passing its model ID.
@@ -52,15 +53,18 @@ provider = create_provider(
 Use the `@register_provider` decorator to register your provider:
 
 ```python
-from sutram import BaseProvider, register_provider
+from sutram import BaseProvider, LLMResponse, register_provider
 
 @register_provider("myprovider", base_url="https://api.myprovider.com/v1/chat")
 class MyProvider(BaseProvider):
     def _build_request_body(self, messages: list[dict]) -> dict:
         return {"model": self.model, "messages": messages}
 
-    def _parse_response(self, data: dict) -> str:
-        return data["choices"][0]["message"]["content"]
+    def _parse_response(self, data: dict) -> LLMResponse:
+        return LLMResponse(
+            content=data["choices"][0]["message"]["content"],
+            raw=data,
+        )
 ```
 
 Now use it like any built-in provider:
@@ -100,7 +104,9 @@ Every provider supports both sync and async methods:
 ```python
 # Sync
 response = provider.call_llm("Hello!")
+print(response.content)
 
 # Async
 response = await provider.acall_llm("Hello!")
+print(response.content)
 ```

@@ -36,13 +36,13 @@ provider = create_provider(
 
 # Single-turn call
 response = provider.call_llm("What is the meaning of sūtram?")
-print(response)
+print(response.content)
 
 # Multi-turn conversation
 session = Session(system_prompt="You are a helpful assistant.")
 session.add_user_message("Hello!")
 response = provider.chat(session.get_messages())
-session.add_assistant_message(response)
+session.add_assistant_message(response.content)
 session.add_user_message("Tell me more.")
 response = provider.chat(session.get_messages())
 ```
@@ -70,15 +70,18 @@ provider = create_provider(
 Use the `@register_provider` decorator to register your provider:
 
 ```python
-from sutram import BaseProvider, register_provider
+from sutram import BaseProvider, LLMResponse, register_provider
 
 @register_provider("myprovider", base_url="https://api.myprovider.com/v1/chat")
 class MyProvider(BaseProvider):
     def _build_request_body(self, messages: list[dict]) -> dict:
         return {"model": self.model, "messages": messages}
 
-    def _parse_response(self, data: dict) -> str:
-        return data["choices"][0]["message"]["content"]
+    def _parse_response(self, data: dict) -> LLMResponse:
+        return LLMResponse(
+            content=data["choices"][0]["message"]["content"],
+            raw=data,
+        )
 ```
 
 Now use it like any built-in provider:

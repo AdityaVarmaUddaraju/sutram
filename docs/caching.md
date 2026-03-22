@@ -4,7 +4,7 @@ Caching prevents redundant API calls by storing responses and returning them whe
 
 ## How It Works
 
-Sutram generates a cache key from the **model name** and the **full message list**. If a matching key is found in the cache, the stored response is returned without making an API call.
+Sutram generates a cache key from the **model name** and the **full message list**. If a matching key is found in the cache, the stored `LLMResponse` is deserialized and returned without making an API call. Cache values are stored as JSON strings.
 
 ## Using DictCache
 
