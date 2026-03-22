@@ -113,6 +113,34 @@ async def main():
 asyncio.run(main())
 ```
 
+## Structured Output
+
+Get validated, typed responses using Pydantic models:
+
+```python
+from pydantic import BaseModel, Field
+from sutram import create_provider, ResponseSchema
+
+class Person(BaseModel):
+    name: str
+    age: int = Field(ge=0, le=150)
+
+provider = create_provider(
+    name="openrouter",
+    model="openai/gpt-4",
+    api_key=os.environ["OPEN_ROUTER_API_KEY"],
+)
+
+schema = ResponseSchema(response_model=Person)
+result = provider.call_llm("Invent a person with a name and age.", response_schema=schema)
+
+print(result.parsed)       # Person(name='Alex Rivera', age=28)
+print(result.parsed.name)  # 'Alex Rivera'
+print(result.content)      # Raw JSON string from the LLM
+```
+
+If the LLM returns invalid JSON or fails Pydantic validation, the error is automatically sent back to the LLM for correction, up to `max_parse_retries` times (default: 3).
+
 ## SSL Verification
 
 By default, Sutram verifies SSL certificates using your system's trusted CA bundle. You can customize this behavior with the `verify` parameter:

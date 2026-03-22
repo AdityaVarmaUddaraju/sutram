@@ -2,7 +2,7 @@
 
 from .cache import Cache, DictCache
 from .session import Session
-from .config import RetryPolicy, APIConfig, RequestConfig
+from .config import RetryPolicy, APIConfig, RequestConfig, ResponseSchema
 from .base import BaseProvider
 from .response import LLMResponse, Usage, ToolCall
 from .providers.openai_compat import OpenAICompatProvider
@@ -12,7 +12,7 @@ from .registry import register_provider, create_provider
 __all__ = [
     "Cache", "DictCache",
     "Session",
-    "RetryPolicy", "APIConfig", "RequestConfig",
+    "RetryPolicy", "APIConfig", "RequestConfig", "ResponseSchema",
     "BaseProvider",
     "LLMResponse", "Usage", "ToolCall",
     "OpenAICompatProvider",

@@ -41,6 +41,13 @@ class APIConfig(BaseModel):
             return self.api_key()
         return self.api_key
 
+class ResponseSchema(BaseModel):
+    response_model: type[BaseModel]
+    max_parse_retries: int = 3
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
 class RequestConfig(BaseModel):
     api_config: APIConfig
     sync_client: httpx.Client | None = None

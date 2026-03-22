@@ -7,8 +7,11 @@ from ..response import LLMResponse, Usage, ToolCall
 class OpenAICompatProvider(BaseProvider):
     """Base class for providers using the OpenAI chat completions format."""
 
-    def _build_request_body(self, messages: list[dict]) -> dict:
-        return {"model": self.model, "messages": messages}
+    def _build_request_body(self, messages: list[dict], response_format: dict | None = None) -> dict:
+        body = {"model": self.model, "messages": messages}
+        if response_format:
+            body["response_format"] = response_format
+        return body
 
     def _parse_response(self, data: dict) -> LLMResponse:
         choice = data["choices"][0]

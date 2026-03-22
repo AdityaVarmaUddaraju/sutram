@@ -40,6 +40,7 @@ The unified response object returned by all provider methods.
 | `finish_reason` | `str \| None` | `None` | Why the model stopped (`"stop"`, `"length"`, `"tool_calls"`, etc.) |
 | `usage` | `Usage` | `Usage()` | Token usage statistics |
 | `raw` | `dict` | `{}` | Full raw response from the provider API |
+| `parsed` | `Any` | `None` | Validated Pydantic model instance when using `ResponseSchema` |
 
 `LLMResponse` provides a rich HTML representation in notebooks with collapsible sections for reasoning, tool calls, and raw response data.
 
@@ -71,15 +72,15 @@ The base class for all providers. Handles caching, retries, and both sync/async 
 #### `call_llm`
 
 ```python
-call_llm(prompt: str, system_prompt: str | None = None) -> LLMResponse
+call_llm(prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse
 ```
 
-Single-turn synchronous call. Optionally include a system prompt.
+Single-turn synchronous call. Optionally include a system prompt and a `ResponseSchema` for structured output.
 
 #### `acall_llm`
 
 ```python
-async acall_llm(prompt: str, system_prompt: str | None = None) -> LLMResponse
+async acall_llm(prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse
 ```
 
 Async version of `call_llm`.
@@ -87,7 +88,7 @@ Async version of `call_llm`.
 #### `chat`
 
 ```python
-chat(messages: list[dict]) -> LLMResponse
+chat(messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse
 ```
 
 Multi-turn synchronous call. Pass a full message list (e.g. from `Session.get_messages()`).
@@ -95,7 +96,7 @@ Multi-turn synchronous call. Pass a full message list (e.g. from `Session.get_me
 #### `achat`
 
 ```python
-async achat(messages: list[dict]) -> LLMResponse
+async achat(messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse
 ```
 
 Async version of `chat`.
@@ -105,7 +106,7 @@ Async version of `chat`.
 Implement these two methods to create a custom provider:
 
 ```python
-def _build_request_body(self, messages: list[dict]) -> dict
+def _build_request_body(self, messages: list[dict], response_format: dict | None = None) -> dict
 def _parse_response(self, data: dict) -> LLMResponse
 ```
 
@@ -198,6 +199,22 @@ cache = DictCache()
 | `base_url` | `str` | API endpoint URL |
 | `api_key` | `str` \| `Callable` | API key or callable that returns one |
 | `retry_policy` | `RetryPolicy` | Retry configuration |
+
+### `ResponseSchema`
+
+Configuration for structured output with automatic validation and retry.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `response_model` | `type[BaseModel]` | required | Pydantic model class to validate the response against |
+| `max_parse_retries` | `int` | `3` | Maximum number of retry attempts if the response fails validation |
+
+When passed to `call_llm`, `chat`, `acall_llm`, or `achat`, the provider will:
+
+1. Convert the Pydantic model to a JSON schema and include it in `response_format`
+2. Validate the response content against the model
+3. If validation fails, send the error back to the LLM and retry up to `max_parse_retries` times
+4. Attach the validated instance to `response.parsed`
 
 ### `RequestConfig`
 

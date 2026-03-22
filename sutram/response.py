@@ -2,6 +2,7 @@
 
 import json
 import html as html_lib
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -26,6 +27,7 @@ class LLMResponse(BaseModel):
     finish_reason: str | None = None
     usage: Usage = Usage()
     raw: dict = {}
+    parsed: Any = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -64,6 +66,15 @@ class LLMResponse(BaseModel):
             parts.append(
                 f'<details><summary><strong>Tool Calls ({len(self.tool_calls)})</strong></summary>'
                 f'{tc_html}</details>'
+            )
+
+        # Parsed (collapsible)
+        if self.parsed is not None:
+            parsed_display = html_lib.escape(repr(self.parsed))
+            parts.append(
+                f'<details><summary><strong>Parsed</strong></summary>'
+                f'<pre style="background: #e6f7ff; padding: 8px; border-radius: 4px; '
+                f'white-space: pre-wrap; max-height: 300px; overflow: auto;">{parsed_display}</pre></details>'
             )
 
         # Raw (collapsible)

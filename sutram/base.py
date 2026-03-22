@@ -7,7 +7,7 @@ import time
 import httpx
 
 from .cache import Cache, make_cache_key
-from .config import APIConfig, RequestConfig
+from .config import APIConfig, RequestConfig, ResponseSchema
 from .response import LLMResponse, Usage, ToolCall
 
 logger = logging.getLogger(__name__)
@@ -24,8 +24,17 @@ class BaseProvider:
     def api_config(self) -> APIConfig:
         return self.request_config.api_config
 
-    def _build_request_body(self, messages: list[dict]) -> dict:
+    def _build_request_body(self, messages: list[dict], response_format: dict | None = None) -> dict:
         raise NotImplementedError
+
+    def _build_response_format(self, response_model) -> dict:
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": response_model.__name__,
+                "schema": response_model.model_json_schema(),
+            },
+        }
 
     def _parse_response(self, data: dict) -> LLMResponse:
         raise NotImplementedError
@@ -49,10 +58,10 @@ class BaseProvider:
         self.cache.set(make_cache_key(self.model, messages), result.model_dump_json())
 
     # --- Sync request with retry ---
-    def _request_with_retry(self, messages: list[dict]) -> str:
+    def _request_with_retry(self, messages: list[dict], response_format: dict | None = None) -> LLMResponse:
         policy = self.api_config.retry_policy
         api_key = self.api_config.get_api_key()
-        body = self._build_request_body(messages)
+        body = self._build_request_body(messages, response_format=response_format)
         last_error = None
         client = self.request_config.sync_client
         should_close = client is None
@@ -91,10 +100,10 @@ class BaseProvider:
         raise last_error or RuntimeError("Max retries exceeded")
 
     # --- Async request with retry ---
-    async def _arequest_with_retry(self, messages: list[dict]) -> str:
+    async def _arequest_with_retry(self, messages: list[dict], response_format: dict | None = None) -> LLMResponse:
         policy = self.api_config.retry_policy
         api_key = await self.api_config.aget_api_key()
-        body = self._build_request_body(messages)
+        body = self._build_request_body(messages, response_format=response_format)
         last_error = None
         client = self.request_config.async_client
         should_close = client is None
@@ -132,34 +141,81 @@ class BaseProvider:
         logger.error(f"All {policy.max_retries+1} attempts failed")
         raise last_error or RuntimeError("Max retries exceeded")
 
+    # --- Parse with retry ---
+    def _parse_with_retry(self, messages: list[dict], response: LLMResponse, schema: ResponseSchema) -> LLMResponse:
+        response_format = self._build_response_format(schema.response_model)
+        for attempt in range(schema.max_parse_retries + 1):
+            try:
+                response.parsed = schema.response_model.model_validate_json(response.content)
+                return response
+            except Exception as e:
+                if attempt >= schema.max_parse_retries:
+                    raise ValueError(f"Failed to parse response after {schema.max_parse_retries + 1} attempts: {e}")
+                logger.warning(f"Parse attempt {attempt+1} failed: {e}")
+                messages = messages + [
+                    {"role": "assistant", "content": response.content},
+                    {"role": "user", "content": f"Your response did not match the required schema. Error: {e}. Please try again."},
+                ]
+                response = self._request_with_retry(messages, response_format=response_format)
+        return response
+
+    async def _aparse_with_retry(self, messages: list[dict], response: LLMResponse, schema: ResponseSchema) -> LLMResponse:
+        response_format = self._build_response_format(schema.response_model)
+        for attempt in range(schema.max_parse_retries + 1):
+            try:
+                response.parsed = schema.response_model.model_validate_json(response.content)
+                return response
+            except Exception as e:
+                if attempt >= schema.max_parse_retries:
+                    raise ValueError(f"Failed to parse response after {schema.max_parse_retries + 1} attempts: {e}")
+                logger.warning(f"Parse attempt {attempt+1} failed: {e}")
+                messages = messages + [
+                    {"role": "assistant", "content": response.content},
+                    {"role": "user", "content": f"Your response did not match the required schema. Error: {e}. Please try again."},
+                ]
+                response = await self._arequest_with_retry(messages, response_format=response_format)
+        return response
+
     # --- Sync API ---
-    def call_llm(self, prompt: str, system_prompt: str | None = None) -> LLMResponse:
+    def call_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
+        response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = self._request_with_retry(messages)
+        result = self._request_with_retry(messages, response_format=response_format)
+        if response_schema:
+            result = self._parse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
 
-    def chat(self, messages: list[dict]) -> LLMResponse:
+    def chat(self, messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse:
+        response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = self._request_with_retry(messages)
+        result = self._request_with_retry(messages, response_format=response_format)
+        if response_schema:
+            result = self._parse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
 
     # --- Async API ---
-    async def acall_llm(self, prompt: str, system_prompt: str | None = None) -> LLMResponse:
+    async def acall_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
+        response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = await self._arequest_with_retry(messages)
+        result = await self._arequest_with_retry(messages, response_format=response_format)
+        if response_schema:
+            result = await self._aparse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
 
-    async def achat(self, messages: list[dict]) -> LLMResponse:
+    async def achat(self, messages: list[dict], response_schema: ResponseSchema | None = None) -> LLMResponse:
+        response_format = self._build_response_format(response_schema.response_model) if response_schema else None
         cached = self._cache_get(messages)
         if cached is not None: return cached
-        result = await self._arequest_with_retry(messages)
+        result = await self._arequest_with_retry(messages, response_format=response_format)
+        if response_schema:
+            result = await self._aparse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
