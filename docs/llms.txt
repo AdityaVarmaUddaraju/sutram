@@ -7,6 +7,8 @@ Important notes:
 - Sutram uses an OpenAI-compatible chat completions API format (messages with roles)
 - All provider methods return an `LLMResponse` object with `content`, `reasoning`, `tool_calls`, `usage`, `finish_reason`, `raw`, and `parsed` fields
 - New providers are added by subclassing `BaseProvider` and implementing `_build_request_body()` and `_parse_response()` (returning `LLMResponse`) and using the `@register_provider` decorator
+- Streaming is supported via `stream_llm`, `stream_chat`, `astream_llm`, and `astream_chat`, yielding `StreamDelta` objects with `content`, `finish_reason`, and `usage` fields
+- Streamed responses are cached after completion; streaming does not support `response_schema`
 - Both sync and async methods are supported on all providers
 - Tool calling is supported via `@tool` decorator and `make_tool_config()` for converting Python functions to tool schemas
 - Structured output is supported via `ResponseSchema` with Pydantic model validation and automatic retry

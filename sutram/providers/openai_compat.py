@@ -2,7 +2,7 @@
 
 from ..base import BaseProvider
 from ..config import ToolConfig
-from ..response import LLMResponse, Usage, ToolCall
+from ..response import LLMResponse, Usage, ToolCall, StreamDelta
 
 
 class OpenAICompatProvider(BaseProvider):
@@ -17,6 +17,16 @@ class OpenAICompatProvider(BaseProvider):
             if tool_config.tool_choice is not None:
                 body["tool_choice"] = tool_config.tool_choice
         return body
+
+    def _parse_stream_chunk(self, data: dict) -> StreamDelta:
+        choice = data["choices"][0]
+        delta = choice.get("delta", {})
+        usage_data = data.get("usage")
+        return StreamDelta(
+            content=delta.get("content"),
+            finish_reason=choice.get("finish_reason"),
+            usage=Usage(**usage_data) if usage_data else None,
+        )
 
     def _parse_response(self, data: dict) -> LLMResponse:
         choice = data["choices"][0]

@@ -31,6 +31,22 @@ response = provider.call_llm("Hello!")
 !!! note
     `DictCache` is in-memory only. Cached responses are lost when your program exits.
 
+## Caching with Streaming
+
+Streaming responses are automatically cached after completion. The provider accumulates all streamed chunks, assembles a full `LLMResponse`, and stores it in the cache. When the same request is made again, the full response is returned as a single `StreamDelta` — no API call is made.
+
+```python
+# First call — streams token-by-token from the API
+for delta in provider.stream_llm("Hello!"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+
+# Second identical call — returns instantly from cache
+for delta in provider.stream_llm("Hello!"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+```
+
 ## Building a Custom Cache
 
 Any object that implements `get` and `set` methods can be used as a cache. Here's an example using a JSON file for persistence:

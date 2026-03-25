@@ -83,6 +83,31 @@ response = provider.chat(session.get_messages())
 print(response.content)
 ```
 
+## Streaming with Sessions
+
+Use `stream_chat` or `astream_chat` to stream responses in a multi-turn conversation:
+
+```python
+session = Session(system_prompt="You are a helpful assistant.")
+session.add_user_message("Tell me about Python")
+
+for delta in provider.stream_chat(session.get_messages()):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+print()
+```
+
+For async:
+
+```python
+session.add_user_message("Tell me more")
+
+async for delta in provider.astream_chat(session.get_messages()):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+print()
+```
+
 ## Inspecting a Session
 
 ```python

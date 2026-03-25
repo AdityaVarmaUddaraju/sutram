@@ -12,6 +12,7 @@ A unified Python interface for LLM providers. One thread to connect your code to
 - **Built-in Caching** — Avoid redundant API calls with pluggable cache backends
 - **Retry Policies** — Configurable exponential/fixed backoff with status-code filtering
 - **Multi-turn Sessions** — First-class support for conversation history management
+- **Streaming** — Real-time token-by-token output with sync and async generators
 - **Sync & Async** — Full support for both synchronous and asynchronous workflows
 - **Tool Calling** — Define tools with `@tool` decorator and `make_tool_config()`
 - **Structured Output** — Get validated Pydantic model responses via `ResponseSchema`
@@ -48,6 +49,29 @@ session.add_assistant_message(response.content)
 session.add_user_message("Tell me more.")
 response = provider.chat(session.get_messages())
 ```
+
+## Streaming
+
+```python
+# Sync streaming
+for delta in provider.stream_llm("Tell me a story"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+
+# Async streaming
+async for delta in provider.astream_llm("Tell me a story"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+
+# Streaming with session
+session = Session(system_prompt="You are a helpful assistant.")
+session.add_user_message("Hello!")
+for delta in provider.stream_chat(session.get_messages()):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+```
+
+Streamed responses are automatically cached — subsequent identical calls return instantly from cache.
 
 ## Configuration
 

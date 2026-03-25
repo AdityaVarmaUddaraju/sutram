@@ -61,6 +61,16 @@ The unified response object returned by all provider methods.
 | `function_name` | `str` | required | Name of the function to call |
 | `function_arguments` | `str` | required | JSON string of function arguments |
 
+### `StreamDelta`
+
+A single chunk from a streaming response.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `content` | `str \| None` | `None` | Text fragment for this chunk |
+| `finish_reason` | `str \| None` | `None` | Set on the final chunk (e.g. `"stop"`) |
+| `usage` | `Usage \| None` | `None` | Token usage, if provided on the final chunk |
+
 ---
 
 ## BaseProvider
@@ -101,13 +111,49 @@ async achat(messages: list[dict], response_schema: ResponseSchema | None = None,
 
 Async version of `chat`.
 
+#### `stream_llm`
+
+```python
+stream_llm(prompt: str, system_prompt: str | None = None, tool_config: ToolConfig | None = None) -> Generator[StreamDelta, None, None]
+```
+
+Single-turn synchronous streaming call. Yields `StreamDelta` objects as tokens arrive.
+
+#### `astream_llm`
+
+```python
+async astream_llm(prompt: str, system_prompt: str | None = None, tool_config: ToolConfig | None = None) -> AsyncGenerator[StreamDelta, None]
+```
+
+Async version of `stream_llm`.
+
+#### `stream_chat`
+
+```python
+stream_chat(messages: list[dict], tool_config: ToolConfig | None = None) -> Generator[StreamDelta, None, None]
+```
+
+Multi-turn synchronous streaming call. Pass a full message list (e.g. from `Session.get_messages()`).
+
+#### `astream_chat`
+
+```python
+async astream_chat(messages: list[dict], tool_config: ToolConfig | None = None) -> AsyncGenerator[StreamDelta, None]
+```
+
+Async version of `stream_chat`.
+
+!!! note
+    Streaming methods do not support `response_schema`. Use the non-streaming methods for structured output.
+
 ### Subclassing
 
-Implement these two methods to create a custom provider:
+Implement these methods to create a custom provider:
 
 ```python
 def _build_request_body(self, messages: list[dict], response_format: dict | None = None) -> dict
 def _parse_response(self, data: dict) -> LLMResponse
+def _parse_stream_chunk(self, data: dict) -> StreamDelta  # required for streaming support
 ```
 
 If the provider uses the OpenAI chat completions format, extend `OpenAICompatProvider` instead (see below).
@@ -126,6 +172,7 @@ Base class for providers that use the OpenAI chat completions request/response f
 
 - Standard `{"model": ..., "messages": ...}` request body
 - Response parsing for `content`, `reasoning`, `tool_calls`, `finish_reason`, and `usage`
+- Stream chunk parsing for `content`, `finish_reason`, and `usage`
 
 **Usage:**
 

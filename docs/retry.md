@@ -104,6 +104,10 @@ provider = create_provider(
 
 Timeouts also trigger retries if `max_retries > 0`.
 
+## Retries and Streaming
+
+For streaming requests (`stream_llm`, `stream_chat`, etc.), retries only apply **before the stream opens**. If the connection fails or returns a retryable status code, the request is retried. Once data starts flowing, no further retries are attempted — this prevents sending duplicate partial content to the consumer.
+
 ## Debugging
 
 Enable logging to see retry activity:

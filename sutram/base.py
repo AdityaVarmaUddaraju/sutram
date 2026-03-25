@@ -1,19 +1,22 @@
 """Base provider with caching, retry, and sync/async support."""
 
 import asyncio
+import json
 import logging
 import time
+from contextlib import contextmanager, asynccontextmanager
+from collections.abc import Generator, AsyncGenerator
 
 import httpx
 
 from .cache import Cache, make_cache_key
 from .config import APIConfig, RequestConfig, ResponseSchema, ToolConfig
-from .response import LLMResponse, Usage, ToolCall
+from .response import LLMResponse, StreamDelta, Usage, ToolCall
 
 logger = logging.getLogger(__name__)
 
 class BaseProvider:
-    """Subclasses implement _build_request_body() and _parse_response()."""
+    """Subclasses implement _build_request_body(), _parse_response(), and _parse_stream_chunk()."""
 
     def __init__(self, model: str, request_config: RequestConfig, cache: Cache | None = None):
         self.model = model
@@ -38,6 +41,24 @@ class BaseProvider:
 
     def _parse_response(self, data: dict) -> LLMResponse:
         raise NotImplementedError
+
+    def _parse_stream_chunk(self, data: dict) -> StreamDelta:
+        """Subclasses implement this to parse a single SSE chunk."""
+        raise NotImplementedError
+
+    @staticmethod
+    def _parse_sse_line(line: str) -> dict | None:
+        """Parse an SSE line into JSON, or None if it should be skipped."""
+        if not line.startswith("data: ") or line == "data: [DONE]":
+            return None
+        return json.loads(line[6:])
+
+    def _assemble_response(self, deltas: list[StreamDelta]) -> LLMResponse:
+        """Assemble a list of StreamDeltas into a complete LLMResponse."""
+        content = "".join(d.content for d in deltas if d.content)
+        finish_reason = next((d.finish_reason for d in reversed(deltas) if d.finish_reason), None)
+        usage = next((d.usage for d in reversed(deltas) if d.usage), Usage())
+        return LLMResponse(content=content or None, finish_reason=finish_reason, usage=usage)
 
     def _build_messages(self, prompt: str, system_prompt: str | None = None) -> list[dict]:
         messages = []
@@ -176,6 +197,122 @@ class BaseProvider:
                 response = await self._arequest_with_retry(messages, response_format=response_format)
         return response
 
+    # --- Sync stream with retry ---
+    @contextmanager
+    def _open_stream(self, client: httpx.Client, body: dict):
+        """Retry loop that yields a successful streaming response."""
+        policy = self.api_config.retry_policy
+        last_error = None
+        for attempt in range(policy.max_retries + 1):
+            try:
+                logger.info(f"Stream request to {self.model} (attempt {attempt+1}/{policy.max_retries+1})")
+                with client.stream(
+                    "POST", self.api_config.base_url,
+                    headers={"Authorization": f"Bearer {self.api_config.get_api_key()}"},
+                    json=body, timeout=policy.timeout,
+                ) as response:
+                    if response.status_code in policy.retry_on_status and attempt < policy.max_retries:
+                        wait = policy.get_wait_time(attempt)
+                        logger.warning(f"Status {response.status_code}, retrying in {wait:.1f}s")
+                        time.sleep(wait)
+                        continue
+                    response.raise_for_status()
+                    yield response
+                    return
+            except httpx.TimeoutException as e:
+                last_error = e
+                if attempt < policy.max_retries:
+                    wait = policy.get_wait_time(attempt)
+                    logger.warning(f"Timeout, retrying in {wait:.1f}s")
+                    time.sleep(wait)
+        raise last_error or RuntimeError("Max retries exceeded")
+
+    def _stream_with_retry(self, messages: list[dict], tool_config: ToolConfig | None = None) -> Generator[StreamDelta, None, None]:
+        cached = self._cache_get(messages)
+        if cached:
+            yield StreamDelta(content=cached.content, finish_reason=cached.finish_reason)
+            return
+
+        body = self._build_request_body(messages, tool_config=tool_config)
+        body["stream"] = True
+
+        client = self.request_config.sync_client
+        should_close = client is None
+        if should_close:
+            client = httpx.Client(verify=self.request_config.verify)
+
+        try:
+            with self._open_stream(client, body) as response:
+                deltas = []
+                for line in response.iter_lines():
+                    data = self._parse_sse_line(line)
+                    if data is None: continue
+                    delta = self._parse_stream_chunk(data)
+                    deltas.append(delta)
+                    yield delta
+                self._cache_set(messages, self._assemble_response(deltas))
+        finally:
+            if should_close:
+                client.close()
+
+    # --- Async stream with retry ---
+    @asynccontextmanager
+    async def _aopen_stream(self, client: httpx.AsyncClient, body: dict):
+        """Async retry loop that yields a successful streaming response."""
+        policy = self.api_config.retry_policy
+        last_error = None
+        for attempt in range(policy.max_retries + 1):
+            try:
+                logger.info(f"Async stream request to {self.model} (attempt {attempt+1}/{policy.max_retries+1})")
+                async with client.stream(
+                    "POST", self.api_config.base_url,
+                    headers={"Authorization": f"Bearer {await self.api_config.aget_api_key()}"},
+                    json=body, timeout=policy.timeout,
+                ) as response:
+                    if response.status_code in policy.retry_on_status and attempt < policy.max_retries:
+                        wait = policy.get_wait_time(attempt)
+                        logger.warning(f"Status {response.status_code}, retrying in {wait:.1f}s")
+                        await asyncio.sleep(wait)
+                        continue
+                    response.raise_for_status()
+                    yield response
+                    return
+            except httpx.TimeoutException as e:
+                last_error = e
+                if attempt < policy.max_retries:
+                    wait = policy.get_wait_time(attempt)
+                    logger.warning(f"Timeout, retrying in {wait:.1f}s")
+                    await asyncio.sleep(wait)
+        raise last_error or RuntimeError("Max retries exceeded")
+
+    async def _astream_with_retry(self, messages: list[dict], tool_config: ToolConfig | None = None) -> AsyncGenerator[StreamDelta, None]:
+        cached = self._cache_get(messages)
+        if cached:
+            yield StreamDelta(content=cached.content, finish_reason=cached.finish_reason)
+            return
+
+        body = self._build_request_body(messages, tool_config=tool_config)
+        body["stream"] = True
+
+        client = self.request_config.async_client
+        should_close = client is None
+        if should_close:
+            client = httpx.AsyncClient(verify=self.request_config.verify)
+
+        try:
+            async with self._aopen_stream(client, body) as response:
+                deltas = []
+                async for line in response.aiter_lines():
+                    data = self._parse_sse_line(line)
+                    if data is None: continue
+                    delta = self._parse_stream_chunk(data)
+                    deltas.append(delta)
+                    yield delta
+                self._cache_set(messages, self._assemble_response(deltas))
+        finally:
+            if should_close:
+                await client.aclose()
+
     # --- Sync API ---
     def call_llm(self, prompt: str, system_prompt: str | None = None, response_schema: ResponseSchema | None = None, tool_config: ToolConfig | None = None) -> LLMResponse:
         messages = self._build_messages(prompt, system_prompt)
@@ -219,3 +356,21 @@ class BaseProvider:
             result = await self._aparse_with_retry(messages, result, response_schema)
         self._cache_set(messages, result)
         return result
+
+    # --- Sync Streaming API ---
+    def stream_llm(self, prompt: str, system_prompt: str | None = None, tool_config: ToolConfig | None = None) -> Generator[StreamDelta, None, None]:
+        messages = self._build_messages(prompt, system_prompt)
+        yield from self._stream_with_retry(messages, tool_config=tool_config)
+
+    def stream_chat(self, messages: list[dict], tool_config: ToolConfig | None = None) -> Generator[StreamDelta, None, None]:
+        yield from self._stream_with_retry(messages, tool_config=tool_config)
+
+    # --- Async Streaming API ---
+    async def astream_llm(self, prompt: str, system_prompt: str | None = None, tool_config: ToolConfig | None = None) -> AsyncGenerator[StreamDelta, None]:
+        messages = self._build_messages(prompt, system_prompt)
+        async for delta in self._astream_with_retry(messages, tool_config=tool_config):
+            yield delta
+
+    async def astream_chat(self, messages: list[dict], tool_config: ToolConfig | None = None) -> AsyncGenerator[StreamDelta, None]:
+        async for delta in self._astream_with_retry(messages, tool_config=tool_config):
+            yield delta

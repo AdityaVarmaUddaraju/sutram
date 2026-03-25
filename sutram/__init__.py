@@ -4,7 +4,7 @@ from .cache import Cache, DictCache
 from .session import Session
 from .config import RetryPolicy, APIConfig, RequestConfig, ResponseSchema, ToolConfig
 from .base import BaseProvider
-from .response import LLMResponse, Usage, ToolCall
+from .response import LLMResponse, Usage, ToolCall, StreamDelta
 from .providers.openai_compat import OpenAICompatProvider
 from .providers.openrouter import OpenRouterProvider
 from .registry import register_provider, create_provider
@@ -15,7 +15,7 @@ __all__ = [
     "Session",
     "RetryPolicy", "APIConfig", "RequestConfig", "ResponseSchema", "ToolConfig",
     "BaseProvider",
-    "LLMResponse", "Usage", "ToolCall",
+    "LLMResponse", "Usage", "ToolCall", "StreamDelta",
     "OpenAICompatProvider",
     "OpenRouterProvider",
     "register_provider", "create_provider",

@@ -20,6 +20,12 @@ class ToolCall(BaseModel):
     function_arguments: str  # JSON string, like the raw API returns
 
 
+class StreamDelta(BaseModel):
+    content: str | None = None
+    finish_reason: str | None = None
+    usage: Usage | None = None
+
+
 class LLMResponse(BaseModel):
     content: str | None = None
     reasoning: str | None = None

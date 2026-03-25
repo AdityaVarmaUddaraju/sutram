@@ -113,6 +113,52 @@ async def main():
 asyncio.run(main())
 ```
 
+## Streaming
+
+Stream responses token-by-token for a better user experience:
+
+```python
+from sutram import create_provider
+
+provider = create_provider(
+    name="openrouter",
+    model="openai/gpt-4",
+    api_key=os.environ["OPEN_ROUTER_API_KEY"],
+)
+
+# Sync streaming
+for delta in provider.stream_llm("Tell me a short story"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+print()
+```
+
+Async streaming works the same way:
+
+```python
+async for delta in provider.astream_llm("Tell me a short story"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+print()
+```
+
+You can also stream multi-turn conversations with `stream_chat`:
+
+```python
+from sutram import Session
+
+session = Session(system_prompt="You are a helpful assistant.")
+session.add_user_message("What is Python?")
+
+for delta in provider.stream_chat(session.get_messages()):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+print()
+```
+
+!!! note
+    Streamed responses are automatically cached after completion. Subsequent identical calls return the full response instantly from cache.
+
 ## Tool Calling
 
 Define tools using the `@tool` decorator and let the LLM call them:

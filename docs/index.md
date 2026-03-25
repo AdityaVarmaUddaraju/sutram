@@ -10,6 +10,7 @@ Sutram is a lightweight Python library that provides a unified interface for cal
 - **Built-in caching** — Never pay for the same API call twice
 - **Automatic retries** — Handle transient failures with configurable backoff strategies
 - **Multi-turn sessions** — Manage conversation history effortlessly
+- **Streaming** — Real-time token-by-token output with sync and async generators
 - **Sync & Async** — Full support for both workflows
 - **Tool Calling** — Define tools with `@tool` decorator and let LLMs call your functions
 - **Structured Output** — Get validated Pydantic model responses with automatic retry

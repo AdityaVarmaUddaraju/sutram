@@ -120,6 +120,8 @@ Every provider supports both sync and async methods:
 |------|-------|-------------|
 | `call_llm(prompt)` | `acall_llm(prompt)` | Single-turn call |
 | `chat(messages)` | `achat(messages)` | Multi-turn with message list |
+| `stream_llm(prompt)` | `astream_llm(prompt)` | Single-turn streaming |
+| `stream_chat(messages)` | `astream_chat(messages)` | Multi-turn streaming |
 
 ```python
 # Sync
@@ -129,4 +131,14 @@ print(response.content)
 # Async
 response = await provider.acall_llm("Hello!")
 print(response.content)
+
+# Sync streaming
+for delta in provider.stream_llm("Hello!"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
+
+# Async streaming
+async for delta in provider.astream_llm("Hello!"):
+    if delta.content:
+        print(delta.content, end="", flush=True)
 ```
