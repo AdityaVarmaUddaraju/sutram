@@ -1,0 +1,30 @@
+# Sutram
+
+> Sutram is a lightweight Python library that provides a unified interface for calling LLMs, with built-in caching, retry policies, and multi-turn session management.
+
+Important notes:
+
+- Sutram uses an OpenAI-compatible chat completions API format (messages with roles)
+- All provider methods return an `LLMResponse` object with `content`, `reasoning`, `tool_calls`, `usage`, `finish_reason`, `raw`, and `parsed` fields
+- New providers are added by subclassing `BaseProvider` and implementing `_build_request_body()` and `_parse_response()` (returning `LLMResponse`) and using the `@register_provider` decorator
+- Streaming is supported via `stream_llm`, `stream_chat`, `astream_llm`, and `astream_chat`, yielding `StreamDelta` objects with `content`, `finish_reason`, and `usage` fields
+- Streamed responses are cached after completion; streaming does not support `response_schema`
+- Both sync and async methods are supported on all providers
+- Tool calling is supported via `@tool` decorator and `make_tool_config()` for converting Python functions to tool schemas
+- Structured output is supported via `ResponseSchema` with Pydantic model validation and automatic retry
+
+## Docs
+
+- [Quick Start](https://adityavarmauddaraju.github.io/sutram/quickstart/): Get up and running in 5 minutes with installation, API key setup, and basic usage
+- [Providers](https://adityavarmauddaraju.github.io/sutram/providers/): Provider configuration, custom providers, and sync/async usage
+- [Caching](https://adityavarmauddaraju.github.io/sutram/caching/): Cache configuration, custom cache backends, and the Cache protocol
+- [Sessions](https://adityavarmauddaraju.github.io/sutram/sessions/): Multi-turn conversation management and tool call support
+- [Retry Policies](https://adityavarmauddaraju.github.io/sutram/retry/): Exponential/fixed backoff, retryable status codes, and timeouts
+
+## API Reference
+
+- [API Reference](https://adityavarmauddaraju.github.io/sutram/api-reference/): Full API documentation for all classes and functions
+
+## Optional
+
+- [GitHub Repository](https://github.com/adityavarmauddaraju/sutram): Source code and README
